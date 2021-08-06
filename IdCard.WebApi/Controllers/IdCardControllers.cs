@@ -6,7 +6,9 @@ using System.Threading.Tasks;
 
 namespace IdCard.WebApi.Controllers
 {
-    public class IdCard : ControllerBase
+    [Route("api/[controller]")]
+    [ApiController]
+    public class IdCardControllers : ControllerBase
     {
         
 

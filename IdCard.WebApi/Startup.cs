@@ -12,6 +12,7 @@ using System.Linq;
 using System.Threading.Tasks;
 using IdCard.WebApi.Implementations;
 using IdCard.WebApi.Interfaces;
+using Microsoft.OpenApi.Models;
 
 namespace IdCard.WebApi
 {
@@ -28,6 +29,10 @@ namespace IdCard.WebApi
         public void ConfigureServices(IServiceCollection services)
         {
             services.AddControllers();
+            services.AddSwaggerGen(c =>
+            {
+                c.SwaggerDoc("v1", new OpenApiInfo { Title = "IdCard.WebApi", Version = "v1" });
+            });
             services.AddScoped<IIdCardAuthentication, IdCardAuthentication>();
         }
 
