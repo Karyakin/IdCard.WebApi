@@ -20,7 +20,7 @@
     "IdCard.WebApi": {
       "commandName": "Project",
       "launchBrowser": true,
-      "launchUrl": "weatherforecast",
+      "launchUrl": "card",
       "environmentVariables": {
         "ASPNETCORE_ENVIRONMENT": "Development"
       },

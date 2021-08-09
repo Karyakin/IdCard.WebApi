@@ -29,10 +29,10 @@ namespace IdCard.WebApi
         public void ConfigureServices(IServiceCollection services)
         {
             services.AddControllers();
-            services.AddSwaggerGen(c =>
+           /* services.AddSwaggerGen(c =>
             {
                 c.SwaggerDoc("v1", new OpenApiInfo { Title = "IdCard.WebApi", Version = "v1" });
-            });
+            });*/
             services.AddScoped<IIdCardAuthentication, IdCardAuthentication>();
         }
 
