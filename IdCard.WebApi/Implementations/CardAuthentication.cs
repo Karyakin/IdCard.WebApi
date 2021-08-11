@@ -9,12 +9,12 @@ using Newtonsoft.Json.Linq;
 
 namespace IdCard.WebApi.Implementations
 {
-    public class IdCardAuthentication : IIdCardAuthentication
+    public class CardAuthentication : ICardAuthentication
     {
-        private readonly IPostHandlerRequest _postHandlerRequest;
+        private readonly IPostHandler _postHandlerRequest;
         private readonly IOptions<IdCardSettings> _idCardOptions;
 
-        public IdCardAuthentication(IPostHandlerRequest postHandlerRequest, IOptions<IdCardSettings> idCardOptions)
+        public CardAuthentication(IPostHandler postHandlerRequest, IOptions<IdCardSettings> idCardOptions)
         {
             _postHandlerRequest = postHandlerRequest;
             _idCardOptions = idCardOptions;
@@ -30,14 +30,14 @@ namespace IdCard.WebApi.Implementations
             {
                 { "init", "true" }
             };
-            var response = _postHandlerRequest.PostHandler($"{_idCardOptions.Value.CpAdress}auth_sign", requestParameter).Result;
+            var response = _postHandlerRequest.PostHandlerRequest($"{_idCardOptions.Value.CpAdress}auth_sign", requestParameter).Result;
 
             // (2) bauth_init
             var bauthInitRequest = new Dictionary<string, string>
             {
                 { "so_certificate", $"{response?.SoCert}" }
             };
-            response = _postHandlerRequest.PostHandler($"{_idCardOptions.Value.TerminalAdress}{_idCardOptions.Value.Version}bauth_init", bauthInitRequest).Result;
+            response = _postHandlerRequest.PostHandlerRequest($"{_idCardOptions.Value.TerminalAdress}{_idCardOptions.Value.Version}bauth_init", bauthInitRequest).Result;
             var hreq = response?.Hreq;
 
             // (3) terminal_proxy_bauth_init
@@ -47,7 +47,7 @@ namespace IdCard.WebApi.Implementations
                 { "cmd_to_card", $"{response?.CmdToCard}" }
 
             };
-            response = _postHandlerRequest.PostHandler($"{_idCardOptions.Value.CpAdress}{_idCardOptions.Value.Version}terminal_proxy_bauth_init", terminalProxyBauthInitRequest).Result;
+            response = _postHandlerRequest.PostHandlerRequest($"{_idCardOptions.Value.CpAdress}{_idCardOptions.Value.Version}terminal_proxy_bauth_init", terminalProxyBauthInitRequest).Result;
 
             // (4-5) bauth_process, terminal_proxy_bauth
             do
@@ -57,7 +57,7 @@ namespace IdCard.WebApi.Implementations
                     { "hreq", $"{hreq}" },
                     { "card_response", $"{response?.CardResponse}" }
                 };
-                response = _postHandlerRequest.PostHandler($"{_idCardOptions.Value.TerminalAdress}{_idCardOptions.Value.Version}bauth_process", bauthProcessRequest).Result;
+                response = _postHandlerRequest.PostHandlerRequest($"{_idCardOptions.Value.TerminalAdress}{_idCardOptions.Value.Version}bauth_process", bauthProcessRequest).Result;
 
                 if (response?.IsBauthEstablished is true)
                 {
@@ -69,7 +69,7 @@ namespace IdCard.WebApi.Implementations
                     { "header_cmd_to_card", $"{response?.HeaderCmdToCard}" },
                     { "cmd_to_card", $"{response?.CmdToCard}" }
                 };
-                response = _postHandlerRequest.PostHandler($"{_idCardOptions.Value.CpAdress}{_idCardOptions.Value.Version}terminal_proxy_bauth", terminalProxyBauthRequest).Result;
+                response = _postHandlerRequest.PostHandlerRequest($"{_idCardOptions.Value.CpAdress}{_idCardOptions.Value.Version}terminal_proxy_bauth", terminalProxyBauthRequest).Result;
 
             } while (true);
 

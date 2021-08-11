@@ -16,11 +16,13 @@ namespace IdCard.WebApi.Controllers
     public class CardController : ControllerBase
     {
 
-        private readonly IIdCardAuthentication _idCardAuthentication;
+        private readonly ICardAuthentication _idCardAuthentication;
+        private readonly IDataGroupe _dataGroupe;
 
-        public CardController(IIdCardAuthentication idCardAuthentication)
+        public CardController(ICardAuthentication idCardAuthentication, IDataGroupe dataGroupe)
         {
             _idCardAuthentication = idCardAuthentication;
+            _dataGroupe = dataGroupe;
         }
 
         //pin1 533790
@@ -49,7 +51,8 @@ namespace IdCard.WebApi.Controllers
 
             var digitalSignature =  GetDigitalSignature(hreq, "Привет Мир!");
 
-          //  var dataGroupe = GetDataGroupe(hreq).Result;
+            // var dataGroupe = GetDataGroupe(hreq).Result;
+            var dataGroupe = _dataGroupe.GetDataGroupe(hreq);
 
             return Ok(digitalSignature);
         }
@@ -114,7 +117,8 @@ namespace IdCard.WebApi.Controllers
 
         public async Task<PersonalData> GetDataGroupe(JToken hreq)
         {
-            string dg1 = "dg1";
+            return null;
+           /* string dg1 = "dg1";
             string dg2 = "dg2";
             string dg3 = "dg3";
             string dg4 = "dg4";
@@ -183,7 +187,7 @@ namespace IdCard.WebApi.Controllers
             #endregion
 
 
-            return responseData;
+            return responseData;*/
         }
 
         public string GetDigitalSignature(JToken hreq, string dataToSign)

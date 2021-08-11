@@ -33,8 +33,8 @@ namespace IdCard.WebApi
             services.Configure<IdCardSettings>(Configuration.GetSection("IdCardSettings"));
 
 
-            services.AddScoped<IIdCardAuthentication, IdCardAuthentication>(); 
-            services.AddScoped<IPostHandlerRequest, PostHandlerRequest>(); 
+            services.AddScoped<ICardAuthentication, CardAuthentication>(); 
+            services.AddScoped<IPostHandler, PostHandler>(); 
         }
 
         // This method gets called by the runtime. Use this method to configure the HTTP request pipeline.

@@ -2,7 +2,7 @@
 
 namespace IdCard.WebApi.Interfaces
 {
-   public interface IIdCardAuthentication
+   public interface ICardAuthentication
    {
        public JToken Bauth();
    }
