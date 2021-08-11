@@ -2,7 +2,6 @@
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 using System;
-using System.Buffers.Text;
 using System.Collections.Generic;
 using System.Net.Http;
 using System.Text;
@@ -33,24 +32,16 @@ namespace IdCard.WebApi.Controllers
 
 
         [HttpGet]
-        public async Task<IActionResult> Get()
+        public IActionResult Get()
         {
 
             var hreq = Bauth();
 
-            var dataForSign = "Hello World!";
+            var digitalSignature =  GetDigitalSignature(hreq, "Привет Мир!");
 
+          //  var dataGroupe = GetDataGroupe(hreq).Result;
 
-            var digitalSignature = GetDigitalSignature(hreq, "Привет Мир!");
-
-            var te = "Hello World!";
-            byte[] bytes = Encoding.ASCII.GetBytes(te);
-
-            string s = Convert.ToBase64String(bytes);
-
-            //  var dataGroupe = GetDataGroupe(hreq).Result;
-
-            return Ok();
+            return Ok(digitalSignature);
         }
 
         public JToken Bauth()
@@ -183,9 +174,7 @@ namespace IdCard.WebApi.Controllers
             return responseData;
         }
 
-
-
-        public async Task<PersonalData> GetDigitalSignature(JToken hreq, string dataToSign)
+        public string GetDigitalSignature(JToken hreq, string dataToSign)
         {
             // (1)sign_init
             var requestParametrs = new Dictionary<string, string>
@@ -219,25 +208,35 @@ namespace IdCard.WebApi.Controllers
             response = PostHandler($"{cpAdress}{version}terminal_proxy_command", requestParametrs).Result;
 
 
+            // (5)sign_data
+            byte[] dataForSignInDase64 = Encoding.ASCII.GetBytes(dataToSign);
             requestParametrs = new Dictionary<string, string>
             {
                 { "card_response", $"{response.CardResponse}" },
                 { "hreq", $"{hreq}" },
-                { "data_to_sign", $"{dataToSign}" }
+                { "data_to_sign", $"{dataForSignInDase64}" }
             };
             response = PostHandler($"{terminalAdress}{version}sign_data", requestParametrs).Result;
 
 
+            // (6)terminal_proxy_command
+            requestParametrs = new Dictionary<string, string>
+            {
+                { "header_cmd_to_card", $"{response.HeaderCmdToCard}" },
+                { "cmd_to_card", $"{response.CmdToCard}" }
+            };
+            response = PostHandler($"{cpAdress}{version}terminal_proxy_command", requestParametrs).Result;
 
+            // (7)sign_result
+            requestParametrs = new Dictionary<string, string>
+            {
+                { "card_response", $"{response.CardResponse}" },
+                { "hreq", $"{hreq}" }
+            };
+            response = PostHandler($"{terminalAdress}{version}sign_result", requestParametrs).Result;
 
-            return null;
+            return response.Signature;
         }
-
-
-
-
-
-
 
         static async Task<JsonData> PostHandler(string requestUri, Dictionary<string, string> requestParameters)
         {

@@ -48,12 +48,7 @@ namespace IdCard.WebApi.Entities
         [JsonProperty("err")]
         public string Error { get; set; }
 
-
-      
-
-
-
-
-
+        [JsonProperty("signature")]
+        public string Signature { get; set; }
     }
 }
