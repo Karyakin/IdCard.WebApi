@@ -7,6 +7,7 @@ using System.Net.Http;
 using System.Text;
 using System.Threading.Tasks;
 using IdCard.WebApi.Entities;
+using IdCard.WebApi.Interfaces;
 
 namespace IdCard.WebApi.Controllers
 {
@@ -14,6 +15,14 @@ namespace IdCard.WebApi.Controllers
     [Route("[controller]")]
     public class CardController : ControllerBase
     {
+
+        private readonly IIdCardAuthentication _idCardAuthentication;
+
+        public CardController(IIdCardAuthentication idCardAuthentication)
+        {
+            _idCardAuthentication = idCardAuthentication;
+        }
+
         //pin1 533790
         //pin2 7896313
         //can 042465
@@ -35,7 +44,8 @@ namespace IdCard.WebApi.Controllers
         public IActionResult Get()
         {
 
-            var hreq = Bauth();
+            // var hreq = Bauth();
+            var hreq = _idCardAuthentication.Bauth();
 
             var digitalSignature =  GetDigitalSignature(hreq, "Привет Мир!");
 
@@ -46,58 +56,60 @@ namespace IdCard.WebApi.Controllers
 
         public JToken Bauth()
         {
-            //TODO проверка на наличие коробки
+            return _idCardAuthentication.Bauth();
 
-            // (1) auth_sign
-            var requestParameter = new Dictionary<string, string>
-            {
-                { "init", "true" }
-            };
-            var response = PostHandler($"{cpAdress}auth_sign", requestParameter).Result;
-
-            // (2) bauth_init
-            var bauthInitRequest = new Dictionary<string, string>
-            {
-                { "so_certificate", $"{response?.SoCert}" }
-            };
-            response = PostHandler($"{terminalAdress}{version}bauth_init", bauthInitRequest).Result;
-            var hreq = response?.Hreq;
-
-            // (3) terminal_proxy_bauth_init
-            var terminalProxyBauthInitRequest = new Dictionary<string, string>
-            {
-                { "terminal_certificate", $"{response?.TerminalCertificate}" },
-                { "cmd_to_card", $"{response?.CmdToCard}" }
-
-            };
-            response = PostHandler($"{cpAdress}{version}terminal_proxy_bauth_init", terminalProxyBauthInitRequest).Result;
-
-            // (4-5) bauth_process, terminal_proxy_bauth
-            do
-            {
-                var bauthProcessRequest = new Dictionary<string, string>
-                {
-                    { "hreq", $"{hreq}" },
-                    { "card_response", $"{response?.CardResponse}" }
-                };
-                response = PostHandler($"{terminalAdress}{version}bauth_process", bauthProcessRequest).Result;
-
-                if (response?.IsBauthEstablished is true)
-                {
-                    break;
-                }
-
-                var terminalProxyBauthRequest = new Dictionary<string, string>
-                {
-                    { "header_cmd_to_card", $"{response?.HeaderCmdToCard}" },
-                    { "cmd_to_card", $"{response?.CmdToCard}" }
-                };
-                response = PostHandler($"{cpAdress}{version}terminal_proxy_bauth", terminalProxyBauthRequest).Result;
-
-            } while (true);
-
-            //todo если придет null вернуть исключение "Получение данных не удалось"
-            return hreq;
+            /* //TODO проверка на наличие коробки
+ 
+             // (1) auth_sign
+             var requestParameter = new Dictionary<string, string>
+             {
+                 { "init", "true" }
+             };
+             var response = PostHandler($"{cpAdress}auth_sign", requestParameter).Result;
+ 
+             // (2) bauth_init
+             var bauthInitRequest = new Dictionary<string, string>
+             {
+                 { "so_certificate", $"{response?.SoCert}" }
+             };
+             response = PostHandler($"{terminalAdress}{version}bauth_init", bauthInitRequest).Result;
+             var hreq = response?.Hreq;
+ 
+             // (3) terminal_proxy_bauth_init
+             var terminalProxyBauthInitRequest = new Dictionary<string, string>
+             {
+                 { "terminal_certificate", $"{response?.TerminalCertificate}" },
+                 { "cmd_to_card", $"{response?.CmdToCard}" }
+ 
+             };
+             response = PostHandler($"{cpAdress}{version}terminal_proxy_bauth_init", terminalProxyBauthInitRequest).Result;
+ 
+             // (4-5) bauth_process, terminal_proxy_bauth
+             do
+             {
+                 var bauthProcessRequest = new Dictionary<string, string>
+                 {
+                     { "hreq", $"{hreq}" },
+                     { "card_response", $"{response?.CardResponse}" }
+                 };
+                 response = PostHandler($"{terminalAdress}{version}bauth_process", bauthProcessRequest).Result;
+ 
+                 if (response?.IsBauthEstablished is true)
+                 {
+                     break;
+                 }
+ 
+                 var terminalProxyBauthRequest = new Dictionary<string, string>
+                 {
+                     { "header_cmd_to_card", $"{response?.HeaderCmdToCard}" },
+                     { "cmd_to_card", $"{response?.CmdToCard}" }
+                 };
+                 response = PostHandler($"{cpAdress}{version}terminal_proxy_bauth", terminalProxyBauthRequest).Result;
+ 
+             } while (true);
+ 
+             //todo если придет null вернуть исключение "Получение данных не удалось"
+             return hreq;*/
         }
 
         public async Task<PersonalData> GetDataGroupe(JToken hreq)
@@ -238,7 +250,7 @@ namespace IdCard.WebApi.Controllers
             return response.Signature;
         }
 
-        static async Task<JsonData> PostHandler(string requestUri, Dictionary<string, string> requestParameters)
+       private async Task<JsonData> PostHandler(string requestUri, Dictionary<string, string> requestParameters)
         {
             using var client = new HttpClient();
             var parameters = JsonConvert.SerializeObject(requestParameters);
