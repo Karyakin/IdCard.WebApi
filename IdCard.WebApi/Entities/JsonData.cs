@@ -15,7 +15,6 @@ namespace IdCard.WebApi.Entities
         [JsonProperty("SO_CERT")]
         public string SoCert { get; set; }
         
-        
         private string _hreq;
         [JsonProperty("hreq")]
         public string Hreq
@@ -27,8 +26,7 @@ namespace IdCard.WebApi.Entities
                     _hreq = value;
             }
         }
-
-    
+        
         [JsonProperty("terminal_certificate")]
         public string TerminalCertificate { get; set; }
 
@@ -43,6 +41,19 @@ namespace IdCard.WebApi.Entities
 
         [JsonProperty("is_bauth_established")]
         public bool IsBauthEstablished { get; set; }
-        
+
+        [JsonProperty("is_last_dg_readed")]
+        public bool IsLastDgReaded { get; set; }
+
+        [JsonProperty("err")]
+        public string Error { get; set; }
+
+
+      
+
+
+
+
+
     }
 }

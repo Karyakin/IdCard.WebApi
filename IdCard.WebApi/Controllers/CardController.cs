@@ -1,12 +1,9 @@
 ﻿using Microsoft.AspNetCore.Mvc;
-using Microsoft.Extensions.Logging;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 using System;
+using System.Buffers.Text;
 using System.Collections.Generic;
-using System.IO;
-using System.Linq;
-using System.Net;
 using System.Net.Http;
 using System.Text;
 using System.Threading.Tasks;
@@ -41,9 +38,19 @@ namespace IdCard.WebApi.Controllers
 
             var hreq = Bauth();
 
-            var dataGroupe = GetDataGroupe(hreq).Result;
+            var dataForSign = "Hello World!";
 
-            return Ok(dataGroupe);
+
+            var digitalSignature = GetDigitalSignature(hreq, "Привет Мир!");
+
+            var te = "Hello World!";
+            byte[] bytes = Encoding.ASCII.GetBytes(te);
+
+            string s = Convert.ToBase64String(bytes);
+
+            //  var dataGroupe = GetDataGroupe(hreq).Result;
+
+            return Ok();
         }
 
         public JToken Bauth()
@@ -51,7 +58,7 @@ namespace IdCard.WebApi.Controllers
             //TODO проверка на наличие коробки
 
             // (1) auth_sign
-            var requestParameter =  new Dictionary<string, string>
+            var requestParameter = new Dictionary<string, string>
             {
                 { "init", "true" }
             };
@@ -64,9 +71,9 @@ namespace IdCard.WebApi.Controllers
             };
             response = PostHandler($"{terminalAdress}{version}bauth_init", bauthInitRequest).Result;
             var hreq = response?.Hreq;
-           
+
             // (3) terminal_proxy_bauth_init
-            var terminalProxyBauthInitRequest= new Dictionary<string, string>
+            var terminalProxyBauthInitRequest = new Dictionary<string, string>
             {
                 { "terminal_certificate", $"{response?.TerminalCertificate}" },
                 { "cmd_to_card", $"{response?.CmdToCard}" }
@@ -102,15 +109,7 @@ namespace IdCard.WebApi.Controllers
             return hreq;
         }
 
-
-       
-
-
-
-
-
-
-        public async Task<string> GetDataGroupe(JToken hreq)
+        public async Task<PersonalData> GetDataGroupe(JToken hreq)
         {
             string dg1 = "dg1";
             string dg2 = "dg2";
@@ -118,141 +117,151 @@ namespace IdCard.WebApi.Controllers
             string dg4 = "dg4";
             string dg5 = "dg5";
 
-
             using var client = new HttpClient();
 
             #region read_dg_init (1) gets: header_cmd_to_card, cmd_to_card
 
-            var readDgInitRequesr = "{" +
-                    String.Format("\"hreq\":\"{0}\",", hreq) +
-                    $"\"data_groups_to_read\":[ \"{dg1}\", \"{dg2}\", \"{dg3}\", \"{dg4}\", \"{dg5}\" ]" +
-                    "}";
-            var readDgInitResponse = await client.PostAsync($"{terminalAdress}{version}" + "read_dg_init", new StringContent(readDgInitRequesr, Encoding.UTF8, "application/json"));
+            var readDgInitRequesr =
+                $"{{{String.Format("\"hreq\":\"{0}\",", hreq)}\"data_groups_to_read\":[ \"{dg1}\", \"{dg2}\", \"{dg3}\", \"{dg4}\", \"{dg5}\" ]}}";
+            var readDgInitResponse = await client.PostAsync($"{terminalAdress}{version}read_dg_init", new StringContent(readDgInitRequesr, Encoding.UTF8, "application/json"));
 
             string readDgInitContent = await readDgInitResponse.Content.ReadAsStringAsync();
-           /* var readDgInitJObject = (JObject)JsonConvert.DeserializeObject(readDgInitContent);
-
-            var header_cmd_to_card = readDgInitJObject?["header_cmd_to_card"];
-            var cmd_to_card = readDgInitJObject?["cmd_to_card"];*/
-
             var response = JsonConvert.DeserializeObject<JsonData>(readDgInitContent);
-
 
             #endregion
 
             #region terminal_proxy_command (2) gets: card_responce
 
-            var terminalProxyCommandRequest = JsonConvert.SerializeObject(new Dictionary<string, string>
-            {
-                { "header_cmd_to_card", $"{response?.HeaderCmdToCard}" },
-                { "cmd_to_card", $"{response?.CmdToCard}" }
-
-            });
-
-         /*   var terminalProxyCommandRequest = new Dictionary<string, string>
+            var terminalProxyCommandRequest = new Dictionary<string, string>
             {
                 { "header_cmd_to_card", $"{response?.HeaderCmdToCard}" },
                 { "cmd_to_card", $"{response?.CmdToCard}" }
 
             };
             response = PostHandler($"{cpAdress}{version}terminal_proxy_command", terminalProxyCommandRequest).Result;
-*/
-
-
-            var terminalProxyCommandResponse = await client.PostAsync($"{cpAdress}{version}terminal_proxy_command", new StringContent(terminalProxyCommandRequest, Encoding.UTF8, "application/json"));
-            string terminalProxyCommandContent = await terminalProxyCommandResponse.Content.ReadAsStringAsync();
-            var terminalProxyCommand = (JObject)JsonConvert.DeserializeObject(terminalProxyCommandContent);
-            var card_response = terminalProxyCommand?["card_response"];
-
-
-
-
-
-
-
 
             #endregion
 
-
             #region read_dg, terminal_proxy_command (3-4) 
-
-            // string status;
 
             while (true)
             {
+                var readDgRequest = new Dictionary<string, string>
+                {
+                    { "card_response", $"{response.CardResponse}" },
+                    { "hreq", $"{hreq}" }
+                };
 
+                response = PostHandler($"{terminalAdress}{version}read_dg", readDgRequest).Result;
 
-                var readDgRequest = JsonConvert.SerializeObject(new Dictionary<string, string>
-                 {
-                     { "card_response", $"{response.CardResponse}" },
-                     { "hreq", $"{hreq}" }
-                 });
-
-                var readDgRequestResponse = await client.PostAsync($"{terminalAdress}{version}" + "read_dg", new StringContent(readDgRequest, Encoding.UTF8, "application/json"));
-                string readDgContent = await readDgRequestResponse.Content.ReadAsStringAsync();//err8
-                var readDgCommand = (JObject)JsonConvert.DeserializeObject(readDgContent);
-
-                /*
-                                var readDgRequest = new Dictionary<string, string>
-                                {
-                                    { "card_response", $"{response.CardResponse}" },
-                                    { "hreq", $"{hreq}" }
-                                };
-                                response = PostHandler($"{terminalAdress}{version}read_dg", readDgRequest).Result;*/
-                /*
-                                header_cmd_to_card = readDgCommand?["header_cmd_to_card"].ToString();
-                                cmd_to_card = readDgCommand?["cmd_to_card"];
-                                status = readDgCommand?["is_last_dg_readed"].ToString();*/
-
-                if (response.IsBauthEstablished is true)
+                if (response.IsLastDgReaded is true)
                 {
                     break;
                 }
 
-                /* terminalProxyCommandRequest = new Dictionary<string, string>
+                terminalProxyCommandRequest = new Dictionary<string, string>
                 {
-                    { "header_cmd_to_card", $"{response.HeaderCmdToCard}" },
-                    { "cmd_to_card", $"{response.CmdToCard}" }
+                    { "header_cmd_to_card", $"{response?.HeaderCmdToCard}" },
+                    { "cmd_to_card", $"{response?.CmdToCard}" }
+
                 };
-                 response = PostHandler($"{cpAdress}{version}" + "terminal_proxy_command", terminalProxyCommandRequest).Result;*/
-                terminalProxyCommandResponse = await client.PostAsync($"{cpAdress}{version}" + "terminal_proxy_command", new StringContent(terminalProxyCommandRequest, Encoding.UTF8, "application/json"));
-                terminalProxyCommandContent = await terminalProxyCommandResponse.Content.ReadAsStringAsync();
-                terminalProxyCommand = (JObject)JsonConvert.DeserializeObject(terminalProxyCommandContent);
-                card_response = terminalProxyCommand?["card_response"];
-
+                response = PostHandler($"{cpAdress}{version}terminal_proxy_command", terminalProxyCommandRequest).Result;
             }
-
             #endregion
 
             #region personal_data(5), return personal_data
-            var personalDataRequest = JsonConvert.SerializeObject(new Dictionary<string, string>
-                {
-                    { "hreq", $"{hreq}" }
-                });
-            var personalDataResponse = await client.PostAsync($"{terminalAdress}{version}" + "request_dg", new StringContent(personalDataRequest, Encoding.UTF8, "application/json"));
-            var personalDataResponseContent = await personalDataResponse.Content.ReadAsStringAsync();
-            var personalDataResponseContentCommand = (JObject)JsonConvert.DeserializeObject(personalDataResponseContent);
-            var data = personalDataResponseContentCommand["personal_data"];
+            var personalDataRequest = new Dictionary<string, string>
+              {
+                  { "hreq", $"{hreq}" }
+              };
+
+            var responseData = PostHandlerDataGroupe($"{terminalAdress}{version}request_dg", personalDataRequest).Result;
+
             #endregion
 
 
-
-
-            return data.ToString();
+            return responseData;
         }
+
+
+
+        public async Task<PersonalData> GetDigitalSignature(JToken hreq, string dataToSign)
+        {
+            // (1)sign_init
+            var requestParametrs = new Dictionary<string, string>
+            {
+                { "hreq", $"{hreq}" }
+            };
+            var response = PostHandler($"{terminalAdress}{version}sign_init", requestParametrs).Result;
+
+            // (2)terminal_proxy_sign_init
+            requestParametrs = new Dictionary<string, string>
+            {
+                { "header_cmd_to_card", $"{response.HeaderCmdToCard}" },
+                { "cmd_to_card", $"{response.CmdToCard}" }
+            };
+            response = PostHandler($"{cpAdress}{version}terminal_proxy_sign_init", requestParametrs).Result;
+
+            // (3)sign_select_app
+            requestParametrs = new Dictionary<string, string>
+            {
+                { "card_response", $"{response.CardResponse}" },
+                { "hreq", $"{hreq}" }
+            };
+            response = PostHandler($"{terminalAdress}{version}sign_select_app", requestParametrs).Result;
+
+            // (4)terminal_proxy_command
+            requestParametrs = new Dictionary<string, string>
+            {
+                { "header_cmd_to_card", $"{response.HeaderCmdToCard}" },
+                { "cmd_to_card", $"{response.CmdToCard}" }
+            };
+            response = PostHandler($"{cpAdress}{version}terminal_proxy_command", requestParametrs).Result;
+
+
+            requestParametrs = new Dictionary<string, string>
+            {
+                { "card_response", $"{response.CardResponse}" },
+                { "hreq", $"{hreq}" },
+                { "data_to_sign", $"{dataToSign}" }
+            };
+            response = PostHandler($"{terminalAdress}{version}sign_data", requestParametrs).Result;
+
+
+
+
+            return null;
+        }
+
+
+
+
+
+
+
         static async Task<JsonData> PostHandler(string requestUri, Dictionary<string, string> requestParameters)
         {
             using var client = new HttpClient();
-
             var parameters = JsonConvert.SerializeObject(requestParameters);
 
             var response = await client.PostAsync(requestUri, new StringContent(parameters, Encoding.UTF8, "application/json"));
             string responseContent = await response.Content.ReadAsStringAsync();
-            var bauthInitJson = JsonConvert.DeserializeObject<JsonData>(responseContent);
+            var request = JsonConvert.DeserializeObject<JsonData>(responseContent);
 
-            return bauthInitJson;
+            return request;
+        }
+
+        static async Task<PersonalData> PostHandlerDataGroupe(string requestUri, Dictionary<string, string> requestParameters)
+        {
+            using var client = new HttpClient();
+            var parameters = JsonConvert.SerializeObject(requestParameters);
+
+            var response = await client.PostAsync(requestUri, new StringContent(parameters, Encoding.UTF8, "application/json"));
+            string responseContent = await response.Content.ReadAsStringAsync();
+            var request = JsonConvert.DeserializeObject<PersonalData>(responseContent);
+
+            return request;
         }
     }
 }
-
 
