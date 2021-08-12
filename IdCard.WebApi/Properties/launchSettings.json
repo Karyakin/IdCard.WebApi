@@ -19,7 +19,6 @@
     },
     "IdCard.WebApi": {
       "commandName": "Project",
-      "launchBrowser": true,
       "launchUrl": "card",
       "environmentVariables": {
         "ASPNETCORE_ENVIRONMENT": "Development"

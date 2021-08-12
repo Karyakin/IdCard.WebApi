@@ -50,5 +50,8 @@ namespace IdCard.WebApi.Entities
 
         [JsonProperty("signature")]
         public string Signature { get; set; }
+        public string DataToSign { get; set; }
+
+        
     }
 }

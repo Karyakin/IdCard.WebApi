@@ -34,7 +34,9 @@ namespace IdCard.WebApi
 
 
             services.AddScoped<ICardAuthentication, CardAuthentication>(); 
+            services.AddScoped<IDataGroupe, DataGroupe>(); 
             services.AddScoped<IPostHandler, PostHandler>(); 
+            services.AddScoped<IDigitalSignature, DigitalSignature>(); 
         }
 
         // This method gets called by the runtime. Use this method to configure the HTTP request pipeline.
@@ -46,14 +48,16 @@ namespace IdCard.WebApi
             }
 
             app.UseHttpsRedirection();
-
+            app.UseStaticFiles();
             app.UseRouting();
 
             app.UseAuthorization();
 
             app.UseEndpoints(endpoints =>
             {
-                endpoints.MapControllers();
+                endpoints.MapControllerRoute(
+                    name: "default",
+                    pattern: "{controller=Home}/{action=Index}/{id?}");
             });
         }
     }

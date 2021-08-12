@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Net.Http;
 using System.Threading.Tasks;
 using IdCard.WebApi.Helpers;
 using IdCard.WebApi.Interfaces;
@@ -35,7 +36,7 @@ namespace IdCard.WebApi.Implementations
             // (2) bauth_init
             var bauthInitRequest = new Dictionary<string, string>
             {
-                { "so_certificate", $"{response?.SoCert}" }
+                 { "so_certificate", $"{response?.SoCert}" }
             };
             response = _postHandlerRequest.PostHandlerRequest($"{_idCardOptions.Value.TerminalAdress}{_idCardOptions.Value.Version}bauth_init", bauthInitRequest).Result;
             var hreq = response?.Hreq;

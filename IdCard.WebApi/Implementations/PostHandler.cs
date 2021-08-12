@@ -7,6 +7,7 @@ using System.Threading.Tasks;
 using IdCard.WebApi.Entities;
 using IdCard.WebApi.Interfaces;
 using Newtonsoft.Json;
+using Newtonsoft.Json.Serialization;
 
 namespace IdCard.WebApi.Implementations
 {
@@ -17,11 +18,25 @@ namespace IdCard.WebApi.Implementations
             using var client = new HttpClient();
             var parameters = JsonConvert.SerializeObject(requestParameters);
 
-            var response = await client.PostAsync(requestUri, new StringContent(parameters, Encoding.UTF8, "application/json"));
-            string responseContent = await response.Content.ReadAsStringAsync();
-            var request = JsonConvert.DeserializeObject<JsonData>(responseContent);
+            try
+            {
+                var response = await client.PostAsync(requestUri, new StringContent(parameters, Encoding.UTF8, "application/json"));
+                string responseContent = await response.Content.ReadAsStringAsync();
+                var request = JsonConvert.DeserializeObject<JsonData>(responseContent);
+                if (request?.Error != "0" && request?.Error != null)
+                {
+                    throw new InvalidOperationException($"{request.Error}");// здесь будет код самой ошибки
+                }
+                return request;
+            }
+            catch (Exception e)
+            {
+                Console.WriteLine(e);
+                throw;
+            }
+            
 
-            return request;
+            
         }
         public async Task<PersonalData> PostHandlerDataGroupeRequest(string requestUri, Dictionary<string, string> requestParameters)
         {
