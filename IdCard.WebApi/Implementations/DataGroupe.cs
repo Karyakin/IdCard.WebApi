@@ -6,7 +6,6 @@ using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 using System;
 using System.Collections.Generic;
-using System.Linq;
 using System.Net.Http;
 using System.Text;
 using System.Threading.Tasks;
@@ -36,66 +35,63 @@ namespace IdCard.WebApi.Implementations
             string dg3 = "dg3";
             string dg4 = "dg4";
             string dg5 = "dg5";
-/*
-            try
-            {*/
-                using var client = new HttpClient();
 
-                //(1) gets: header_cmd_to_card, cmd_to_card
-                var readDgInitRequesr = $"{{\"hreq\":\"{hreq}\",\"data_groups_to_read\":[ \"{dg1}\", \"{dg2}\", \"{dg3}\", \"{dg4}\", \"{dg5}\" ]}}";
-                var readDgInitResponse = await client.PostAsync($"{_idCardOptions.Value.TerminalAdress}{_idCardOptions.Value.Version}read_dg_init", new StringContent(readDgInitRequesr, Encoding.UTF8, "application/json"));
+            using var client = new HttpClient();
+            if (client is null)
+            {
+                Log.Error($"Impossible to read data from IdCard. Error was in \"using var client = new HttpClient();\", \"GetDataGroupe\" method. \nDetail:{new Exception().Message}.", nameof(client), new Exception().InnerException);
+                throw new ArgumentException($"Impossible to read data from IdCard. \nDetail:{new Exception().Message}. \nОбратитесь к администратору. ");
+            }
 
-                string readDgInitContent = await readDgInitResponse.Content.ReadAsStringAsync();
-                var response = JsonConvert.DeserializeObject<JsonData>(readDgInitContent);
+            //(1) gets: header_cmd_to_card, cmd_to_card
+            var readDgInitRequesr = $"{{\"hreq\":\"{hreq}\",\"data_groups_to_read\":[ \"{dg1}\", \"{dg2}\", \"{dg3}\", \"{dg4}\", \"{dg5}\" ]}}";
+            var readDgInitResponse = await client.PostAsync($"{_idCardOptions.Value.TerminalAdress}{_idCardOptions.Value.Version}read_dg_init", new StringContent(readDgInitRequesr, Encoding.UTF8, "application/json"));
 
-                //(2) terminal_proxy_command
-                var terminalProxyCommandRequest = new Dictionary<string, string>
+            string readDgInitContent = await readDgInitResponse.Content.ReadAsStringAsync();
+            var response = JsonConvert.DeserializeObject<JsonData>(readDgInitContent);
+
+            //(2) terminal_proxy_command
+            var terminalProxyCommandRequest = new Dictionary<string, string>
                 {
                     { "header_cmd_to_card", $"{response?.HeaderCmdToCard}" },
                     { "cmd_to_card", $"{response?.CmdToCard}" }
 
                 };
-                response = _postHandlerRequest.PostHandlerRequest($"{_idCardOptions.Value.CpAdress}{_idCardOptions.Value.Version}terminal_proxy_command", terminalProxyCommandRequest).Result;
+            response = _postHandlerRequest.PostHandlerRequest($"{_idCardOptions.Value.CpAdress}{_idCardOptions.Value.Version}terminal_proxy_command", terminalProxyCommandRequest).Result;
 
-                //(3-4) read_dg, terminal_proxy_command
-                while (true)
-                {
-                    var readDgRequest = new Dictionary<string, string>
+            //(3-4) read_dg, terminal_proxy_command
+            while (true)
+            {
+                var readDgRequest = new Dictionary<string, string>
                     {
                         { "card_response", $"{response?.CardResponse}" },
                         { "hreq", $"{hreq}" }
                     };
 
-                    response = _postHandlerRequest.PostHandlerRequest($"{_idCardOptions.Value.TerminalAdress}{_idCardOptions.Value.Version}read_dg", readDgRequest).Result;
+                response = _postHandlerRequest.PostHandlerRequest($"{_idCardOptions.Value.TerminalAdress}{_idCardOptions.Value.Version}read_dg", readDgRequest).Result;
 
-                    if (response.IsLastDgReaded is true)
-                    {
-                        break;
-                    }
-
-                    terminalProxyCommandRequest = new Dictionary<string, string>
-                    {
-                        { "header_cmd_to_card", $"{response?.HeaderCmdToCard}" },
-                        { "cmd_to_card", $"{response?.CmdToCard}" }
-
-                    };
-                    response = _postHandlerRequest.PostHandlerRequest($"{_idCardOptions.Value.CpAdress}{_idCardOptions.Value.Version}terminal_proxy_command", terminalProxyCommandRequest).Result;
+                if (response.IsLastDgReaded is true)
+                {
+                    break;
                 }
 
-                //(5) request_dg
-                var personalDataRequest = new Dictionary<string, string>
+                terminalProxyCommandRequest = new Dictionary<string, string>
+                    {
+                        { "header_cmd_to_card", $"{response.HeaderCmdToCard}" },
+                        { "cmd_to_card", $"{response.CmdToCard}" }
+
+                    };
+                response = _postHandlerRequest.PostHandlerRequest($"{_idCardOptions.Value.CpAdress}{_idCardOptions.Value.Version}terminal_proxy_command", terminalProxyCommandRequest).Result;
+            }
+
+            //(5) request_dg
+            var personalDataRequest = new Dictionary<string, string>
                 {
                     { "hreq", $"{hreq}" }
                 };
 
-                var dataGroupe = _postHandlerRequest.PostHandlerDataGroupeRequest($"{_idCardOptions.Value.TerminalAdress}{_idCardOptions.Value.Version}request_dg", personalDataRequest).Result;
-                return dataGroupe;
-            }
-           /* catch (Exception e)
-            {
-                Log.Error($"Failed to get data group. Details:{e.Message}");
-                throw new Exception($"Failed to get data group. Details:{e.Message}");
-            }
-        }*/
+            var dataGroupe = _postHandlerRequest.PostHandlerDataGroupeRequest($"{_idCardOptions.Value.TerminalAdress}{_idCardOptions.Value.Version}request_dg", personalDataRequest).Result;
+            return dataGroupe;
+        }
     }
 }

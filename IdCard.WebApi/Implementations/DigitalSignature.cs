@@ -1,18 +1,16 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Linq;
 using System.Text;
-using System.Threading.Tasks;
 using IdCard.WebApi.Helpers;
 using IdCard.WebApi.Interfaces;
 using Microsoft.Extensions.Options;
 using Newtonsoft.Json.Linq;
+using Serilog;
 
 namespace IdCard.WebApi.Implementations
 {
     public class DigitalSignature : IDigitalSignature
     {
-
         private readonly IPostHandler _postHandlerRequest;
         private readonly IOptions<IdCardSettings> _idCardOptions;
 
@@ -23,6 +21,11 @@ namespace IdCard.WebApi.Implementations
         }
         public string GetDigitalSignature(JToken hreq, string dataToSign)
         {
+            if (hreq is null)
+            {
+                Log.Error($"Parameter \"hreq\" can't be null. Method \"{nameof(GetDigitalSignature)}\", class \"{nameof(DigitalSignature)}\"");
+                throw new NullReferenceException(nameof(hreq));
+            }
             // (1)sign_init
             var requestParameters = new Dictionary<string, string>
             {
@@ -56,12 +59,17 @@ namespace IdCard.WebApi.Implementations
 
 
             // (5)sign_data
-            byte[] dataForSignInDase64 = Encoding.ASCII.GetBytes(dataToSign);
+            //var dataForSignInDase64 = Convert.ToBase64String(Encoding.GetEncoding(1251).GetBytes(dataToSign));
+
+           var strModified = Convert.ToBase64String(Encoding.UTF8.GetBytes(dataToSign));
+
             requestParameters = new Dictionary<string, string>
             {
                 { "card_response", $"{response.CardResponse}" },
                 { "hreq", $"{hreq}" },
-                { "data_to_sign", $"{dataForSignInDase64}" }
+                //{ "data_to_sign", $"{dataForSignInDase64}" }
+                //{ "data_to_sign", "8169C9F8-46F4-41A5-82A6-D85CEDB8023F" }
+                { "data_to_sign", strModified }
             };
             response = _postHandlerRequest.PostHandlerRequest($"{_idCardOptions.Value.TerminalAdress}{_idCardOptions.Value.Version}sign_data", requestParameters).Result;
 
