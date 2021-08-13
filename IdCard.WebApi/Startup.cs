@@ -1,18 +1,11 @@
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
-using Microsoft.AspNetCore.HttpsPolicy;
-using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
-using Microsoft.Extensions.Logging;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Threading.Tasks;
+using IdCard.WebApi.Helpers;
 using IdCard.WebApi.Implementations;
 using IdCard.WebApi.Interfaces;
-using Microsoft.OpenApi.Models;
 
 namespace IdCard.WebApi
 {
@@ -29,11 +22,13 @@ namespace IdCard.WebApi
         public void ConfigureServices(IServiceCollection services)
         {
             services.AddControllers();
-           /* services.AddSwaggerGen(c =>
-            {
-                c.SwaggerDoc("v1", new OpenApiInfo { Title = "IdCard.WebApi", Version = "v1" });
-            });*/
-            services.AddScoped<IIdCardAuthentication, IdCardAuthentication>();
+            services.Configure<IdCardSettings>(Configuration.GetSection("IdCardSettings"));
+
+
+            services.AddScoped<ICardAuthentication, CardAuthentication>(); 
+            services.AddScoped<IDataGroupe, DataGroupe>(); 
+            services.AddScoped<IPostHandler, PostHandler>(); 
+            services.AddScoped<IDigitalSignature, DigitalSignature>(); 
         }
 
         // This method gets called by the runtime. Use this method to configure the HTTP request pipeline.
@@ -45,14 +40,16 @@ namespace IdCard.WebApi
             }
 
             app.UseHttpsRedirection();
-
+            app.UseStaticFiles();
             app.UseRouting();
 
             app.UseAuthorization();
 
             app.UseEndpoints(endpoints =>
             {
-                endpoints.MapControllers();
+                endpoints.MapControllerRoute(
+                    name: "default",
+                    pattern: "{controller=Home}/{action=Index}/{id?}");
             });
         }
     }
